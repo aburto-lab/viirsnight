@@ -1,0 +1,80 @@
+---
+output: github_document
+---
+
+<!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
+
+# viirsnight
+
+<!-- badges: start -->
+<!-- badges: end -->
+
+The goal of viirsnight is to download, wrangle, and analyse VIIRS nightlight datasets.
+
+## Installation
+
+You can install the development version of viirsnight like so:
+
+``` r
+devtools::install_github("aburto-lab/viirsnight")
+```
+
+## Example
+
+This is an R script that downloads and processes satellite imagery data to create a dataset of nighttime light levels. Here is a brief overview of the script:
+
+- The tidyverse library is loaded. This is a collection of R packages that provide a consistent and cohesive set of tools for working with data.
+- A vector of years (2013 to 2021) is created using the : operator and stored in the years variable.
+- The map() function from the purrr package is used to apply the download_viirs() function to each year in the years vector, downloading satellite imagery data and saving it to a directory called "data/".
+- The list.files() function is used to get a list of all the files in the "data/" directory, and the resulting vector of file names is stored in the raster_files variable.
+- The map_dfr() function from purrr is used to apply the extract_lights() function to each file in the raster_files vector, extracting information about nighttime light levels within a given buffer area defined by a shapefile in the "shp/" directory.
+- The resulting data is then pivoted to create a table with columns for each year and rows for each buffer area, using the pivot_wider() function from tidyr.
+- The shapefile containing information about the buffer areas is read into R using the st_read() function from the sf package. Columns of interest are selected using the select() function from dplyr.
+- The cbind() function is used to combine the shapefile data with the pivoted nighttime light data.
+- The resulting data is written to a geopackage file using st_write() and to a CSV file using write_csv().
+
+```{r eval=FALSE, message=FALSE, warning=FALSE}
+# Load the tidyverse library, which includes many useful packages for data manipulation and visualization
+library(tidyverse)
+library(viirsnight)
+# Define a vector of years to download satellite imagery data for
+years <- 2013:2021
+
+# Download satellite imagery data for each year using the download_viirs function and save it to a "data" directory
+purrr::map(years, download_viirs, "data/")
+
+# Get a list of all the files in the "data" directory
+raster_files <- list.files("data/", full.names = T)
+
+# Extract information about nighttime light levels for each file in the "data" directory using the extract_lights function, and combine the results into a single data frame
+lights_results <- purrr::map_dfr(raster_files, extract_lights, buffer = sf::st_read("shp/buffer_to_extract.gpkg"))
+
+# Pivot the resulting data frame so that there is one row per buffer area and one column per year, with the mean nighttime light level for each buffer area and year in the cells
+lights_pivot <- lights_results %>% 
+  group_by(year) %>% 
+  mutate(id = 1:length(year)) %>% 
+  pivot_wider(names_from = year, values_from = light_mean)
+
+# Read in a shapefile with information about the buffer areas
+shape <- sf::st_read("shp/buffer_to_extract.gpkg") %>% select(SOVEREIGNT, LEVEL, POP_EST, POP_YEAR, GDP_MD, GDP_YEAR, INCOME_GRP, ECONOMY, CONTINENT)
+
+# Combine the pivoted nighttime light level data with the shapefile data using cbind
+final_results <- cbind(shape, lights_pivot)
+
+# Write the final data to a geopackage file
+sf::st_write(final_results, "nighlights_spatial.gpkg")
+
+# Write the final data to a CSV file, excluding the geometry column
+write_csv(select(final_results, -geom), "nightlights.csv")
+
+```
+
