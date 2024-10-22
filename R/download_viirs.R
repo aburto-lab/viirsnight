@@ -16,8 +16,9 @@ download_viirs <- function(year, destination_folder) {
   if (missing(year)) {stop("A year from 2013 to 2021 must be selected")}
   if (!year %in% 2013:2021) {stop("A year from 2013 to 2021 must be selected")}
   if (missing(destination_folder)) {stop("No destination folder is selected")}
-
-  dir.create(destination_folder)
+  if (!dir.exists(destination_folder)) {
+    dir.create(destination_folder)
+  }
 
   params <- list(
     client_id = 'eogdata_oidc',
