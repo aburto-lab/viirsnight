@@ -11,7 +11,7 @@
 #' @examples
 #' download_viirs(2019)
 #'
-download_viirs <- function(year, destination_folder) {
+download_viirs <- function(year, destination_folder, username, password) {
 
   if (missing(year)) {stop("A year from 2013 to 2021 must be selected")}
   if (!year %in% 2013:2021) {stop("A year from 2013 to 2021 must be selected")}
@@ -19,12 +19,15 @@ download_viirs <- function(year, destination_folder) {
   if (!dir.exists(destination_folder)) {
     dir.create(destination_folder)
   }
+  if (missing(username) || missing(password)) {
+    stop("Username and password must be provided")
+  }
 
   params <- list(
     client_id = 'eogdata_oidc',
     client_secret = '2677ad81-521b-4869-8480-6d05b9e57d48',
-    username = rstudioapi::askForPassword("Email or username"),
-    password = rstudioapi::askForPassword("Password"),
+    username = username,
+    password = password,
     grant_type = 'password'
   )
 
